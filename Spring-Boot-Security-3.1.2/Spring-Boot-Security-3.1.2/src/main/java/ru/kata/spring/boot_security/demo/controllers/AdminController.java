@@ -1,12 +1,8 @@
 package ru.kata.spring.boot_security.demo.controllers;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 import ru.kata.spring.boot_security.demo.model.User;
 import ru.kata.spring.boot_security.demo.service.UserService;
 
@@ -19,78 +15,83 @@ public class AdminController {
 
     private final UserService userService;
 
-
     public AdminController(UserService userService) {
         this.userService = userService;
-
     }
 
+    // Список всех пользователей
     @GetMapping
-    public String getAllUsers(Model model, Principal principal) {
+    public ModelAndView getAllUsers(Principal principal) {
         User currentUser = userService.userByEmail(principal.getName());
-        model.addAttribute("users", userService.getAllUsers());
-        model.addAttribute("currentUser", currentUser.getEmail());
-        return "users";
+        if (currentUser == null) {
+            return new ModelAndView("redirect:/login");
+        }
+
+        return new ModelAndView("users")
+                .addObject("currentUser", currentUser.getEmail())
+                .addObject("users", userService.getAllUsers());
     }
 
+    // Добавление пользователя (обработка формы)
     @PostMapping("/add")
-    public String addUsers(@ModelAttribute("user") User user,
-                           @RequestParam(value = "roleIds", required = false) Set<Long> roleIds){
+    public ModelAndView addUsers(@ModelAttribute("user") User user,
+                                 @RequestParam(value = "roleIds", required = false) Set<Long> roleIds) {
         userService.saveUser(user, roleIds);
-
-        return "redirect:/admin";
+        return new ModelAndView("redirect:/admin");
     }
 
+    // Удаление пользователя
     @PostMapping("/delete")
-    public String deleteUsers(@RequestParam("id") Long id){
-
+    public ModelAndView deleteUsers(@RequestParam("id") Long id) {
         userService.deleteUser(id);
-
-        return "redirect:/admin";
-
+        return new ModelAndView("redirect:/admin");
     }
 
+    // Обновление пользователя
     @PostMapping("/update")
-    public String updateUsers(@ModelAttribute("user") User user,
-                              @RequestParam(value = "roleIds", required = false)
-                              Set<Long> roleIds){
-
+    public ModelAndView updateUsers(@ModelAttribute("user") User user,
+                                    @RequestParam(value = "roleIds", required = false) Set<Long> roleIds) {
         userService.updateUser(user, roleIds);
-
-        return "redirect:/admin";
+        return new ModelAndView("redirect:/admin");
     }
 
-    // Для страницы добавления пользователя
+    // Форма добавления пользователя
     @GetMapping("/add-user")
-    public String addUserForm(Model model, Principal principal) {
-        // Получаем текущего пользователя для навбара
+    public ModelAndView addUserForm(Principal principal) {
         User currentUser = userService.userByEmail(principal.getName());
-        model.addAttribute("currentUser", currentUser.getEmail());
-        model.addAttribute("user", new User());
-        // Если нужно передать список ролей для выбора в форме:
-        // model.addAttribute("roles", roleService.findAll());
-        return "add-user"; // имя шаблона (add-user.html)
+        if (currentUser == null) {
+            return new ModelAndView("redirect:/login");
+        }
+
+        return new ModelAndView("add-user")
+                .addObject("currentUser", currentUser.getEmail())
+                .addObject("user", new User());
+        // если нужны роли: .addObject("roles", roleService.getAllRoles())
     }
 
-    // Для страницы редактирования пользователя
+    // Форма редактирования пользователя
     @GetMapping("/edit-user")
-    public String editUserForm(@RequestParam("id") Long id, Model model, Principal principal) {
+    public ModelAndView editUserForm(@RequestParam("id") Long id, Principal principal) {
         User currentUser = userService.userByEmail(principal.getName());
-        model.addAttribute("currentUser", currentUser.getEmail());
-        User user = userService.findUserById(id); // предполагаем, что такой метод есть
-        model.addAttribute("user", user);
-        // если нужны роли:
-        // model.addAttribute("roles", roleService.findAll());
-        return "edit"; // или "edit-user" – смотрите, как назван файл
+        if (currentUser == null) {
+            return new ModelAndView("redirect:/login");
+        }
+
+        return new ModelAndView("edit")
+                .addObject("currentUser", currentUser.getEmail())
+                .addObject("user", userService.findUserById(id));
     }
 
-    // Для страницы удаления (если нужна отдельная страница подтверждения)
+    // Форма подтверждения удаления
     @GetMapping("/delete-user")
-    public String deleteUserForm(@RequestParam("id") Long id, Model model, Principal principal) {
+    public ModelAndView deleteUserForm(@RequestParam("id") Long id, Principal principal) {
         User currentUser = userService.userByEmail(principal.getName());
-        model.addAttribute("currentUser", currentUser.getEmail());
-        User user = userService.findUserById(id);
-        model.addAttribute("user", user);
-        return "delete"; // или "delete-user"
+        if (currentUser == null) {
+            return new ModelAndView("redirect:/login");
+        }
+
+        return new ModelAndView("delete")
+                .addObject("currentUser", currentUser.getEmail())
+                .addObject("user", userService.findUserById(id));
     }
 }
